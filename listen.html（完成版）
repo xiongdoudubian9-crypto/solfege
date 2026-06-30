@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>聴く - モード選択</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 40px; }
+        .menu-button {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 20px;
+            background: #2196F3;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .menu-button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+
+    <h1>聴く</h1>
+    <p>学習内容を選んでください</p>
+
+    <a class="menu-button" href="listen_step1_piano.html">ステップ1（ピアノ）</a>
+    <a class="menu-button" href="listen_step2_violin.html">ステップ2（ヴァイオリン）</a>
+    <a class="menu-button" href="listen_step3_brass.html">ステップ3（金管）</a>
+    <a class="menu-button" href="listen_step4_woodwind.html">ステップ4（木管）</a>
+    <a class="menu-button" href="listen_step_extra_animals.html">裏ステージ（動物の鳴き声）</a>
+
+    <p><a href="index.html">← トップに戻る</a></p>
+
+</body>
+</html>
