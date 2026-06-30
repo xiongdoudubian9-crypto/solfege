@@ -35,7 +35,7 @@
 </div>
 
 <script>
-/* 拍数定義（音符・休符の長さ） */
+/* 拍数定義 */
 const NOTE = {
   "whole": 4,
   "half": 2,
@@ -56,7 +56,7 @@ const LEVEL_NOTES = {
   6: ["whole", "dotted_half", "half", "quarter", "quarter_rest", "half_rest"]
 };
 
-/* 休符だけ統合（音符は統合しない） */
+/* 🎯 正しい記譜法：音符は統合しない／休符は統合する */
 function mergeRests(rhythm) {
   let merged = [];
   let restBuffer = 0;
@@ -84,7 +84,7 @@ function mergeRests(rhythm) {
   return merged;
 }
 
-/* 合計が必ず4拍になるようにリズム生成（音符は統合しない／休符は統合） */
+/* 🎯 リズム生成（音符は統合しない／休符は統合） */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -99,18 +99,16 @@ function generateRhythm(level) {
     }
   }
 
-  // ここでの rhythm は「実際に鳴らすリズム」＝合計4拍ちょうど
-  // 表示用に休符だけ統合する
-  return rhythm;
+  return mergeRests(rhythm);
 }
 
-/* 柔らかい時報のような音（モールス信号） */
+/* 🎵 モールス信号（柔らかい時報のような音） */
 function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = "sine";
-  osc.frequency.value = 520;
+  osc.type = "sine";        // ★柔らかい音
+  osc.frequency.value = 520; // ★時報のような優しい高さ
 
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -123,7 +121,7 @@ function playMorse(time, duration, ctx) {
   osc.stop(time + duration);
 }
 
-/* カスタネット（拍位置） */
+/* カスタネット */
 function playCastanet(time, ctx) {
   const noise = ctx.createBufferSource();
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -140,13 +138,13 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
-/* リズム再生：音符も休符も NOTE[note] × 1拍の長さで扱う */
+/* 🎯 リズム再生（音符は打ち直し／休符は無音／完全同期） */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
   let t = ctx.currentTime;
 
-  /* 予備拍（4拍） */
+  /* 予備拍 */
   for (let i = 0; i < 4; i++) {
     playCastanet(t, ctx);
     t += beat;
@@ -154,27 +152,27 @@ function playRhythm(rhythm, tempo) {
 
   const start = t;
 
-  /* 拍位置のカスタネット（4拍ぶん必ず鳴る） */
+  /* カスタネット（拍位置） */
   const totalBeats = rhythm.reduce((sum, note) => sum + NOTE[note], 0);
   for (let i = 0; i < totalBeats; i++) {
     playCastanet(start + i * beat, ctx);
   }
 
-  /* 本体：音符は鳴らす／休符は無音、長さは NOTE[note] × beat */
+  /* 本体（音符は打ち直し／休符は無音） */
   let cur = start;
   rhythm.forEach(note => {
     const dur = NOTE[note] * beat;
 
     if (note.includes("rest")) {
-      cur += dur;
+      cur += dur; // ★休符 → 絶対に鳴らさない
     } else {
-      playMorse(cur, dur, ctx);
+      playMorse(cur, dur, ctx); // ★音符 → 柔らかい音で鳴らす
       cur += dur;
     }
   });
 }
 
-/* 見た目のパターン比較用（拍数パターンで判定） */
+/* 譜例の見た目で比較（正解判定のズレ防止） */
 function normalize(rhythm) {
   return rhythm.map(n => NOTE[n]).sort((a,b)=>a-b);
 }
@@ -195,7 +193,7 @@ function generateChoices(correct, level) {
   return choices;
 }
 
-/* SVG譜例（表示用：休符だけ統合してから描画） */
+/* SVG譜例 */
 function drawNoteSVG(note) {
   switch(note) {
     case "quarter":
@@ -239,10 +237,9 @@ function displayChoices(choices, correct) {
   div.innerHTML = "";
   choices.forEach(choice => {
     const btn = document.createElement("button");
-    const displayRhythm = mergeRests(choice); // 表示用に休符だけ統合
     btn.innerHTML =
       `<span style="font-size:20px; font-weight:bold;">4/4</span> ` +
-      displayRhythm.map(n => drawNoteSVG(n)).join("");
+      choice.map(n => drawNoteSVG(n)).join("");
     btn.onclick = () => checkAnswer(choice, correct);
     div.appendChild(btn);
     div.appendChild(document.createElement("br"));
@@ -303,10 +300,16 @@ function nextQuestion() {
   document.getElementById("questionInfo").innerText =
     "問題 " + questionCount + " / 10";
 
+  /* ★ 正解のリズムを生成 */
   currentQuestion = generateRhythm(selectedLevel);
+
+  /* ★ 正しいリズムを再生 */
   playRhythm(currentQuestion, tempo);
 
+  /* ★ 正解は currentQuestion を使う */
   const choices = generateChoices(currentQuestion, selectedLevel);
+
+  /* ★ 表示も currentQuestion を使う */
   displayChoices(choices, currentQuestion);
 }
 
