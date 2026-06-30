@@ -1,5 +1,6 @@
 <h2>リズムかるた：ステップ1（低学年）</h2>
 
+<!-- レベル選択画面 -->
 <div id="screen-level">
   <p>レベルを選んでください。</p>
   <button onclick="selectLevel(1)">レベル1（四分音符・四分休符）</button><br>
@@ -10,6 +11,7 @@
   <button onclick="selectLevel(6)">レベル6（付点二分音符を追加）</button><br>
 </div>
 
+<!-- テンポ選択画面 -->
 <div id="screen-tempo" style="display:none;">
   <p>レベル <span id="levelLabel"></span> が選ばれました。</p>
   <p>テンポを選んでください。</p>
@@ -24,6 +26,7 @@
   <button onclick="backToLevel()">← レベル選択に戻る</button>
 </div>
 
+<!-- クイズ画面 -->
 <div id="screen-quiz" style="display:none;">
   <p id="questionInfo"></p>
   <p id="status"></p>
@@ -136,13 +139,13 @@ function generateRhythm(level) {
   return rhythm;
 }
 
-/* リズム再生：予備拍＋テンポ刻み＋本体 */
+/* ★ 完全同期版：リズム再生 */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
   let t = ctx.currentTime;
 
-  // 予備拍4つ（カスタネット）
+  // 予備拍4つ
   for (let i = 0; i < 4; i++) {
     playCastanet(t, ctx);
     t += beat;
@@ -150,12 +153,15 @@ function playRhythm(rhythm, tempo) {
 
   const start = t;
 
-  // テンポ刻み（4拍分）
-  for (let i = 0; i < 4; i++) {
+  // ★ 本体の総拍数を計算
+  const totalBeats = rhythm.reduce((sum, note) => sum + NOTE[note], 0);
+
+  // ★ テンポ刻み（総拍数ぶん鳴らす）
+  for (let i = 0; i < totalBeats; i++) {
     playCastanet(start + i * beat, ctx);
   }
 
-  // 本体リズム（モールス信号）
+  // 本体リズム（モールス）
   let cur = start;
   rhythm.forEach(note => {
     const dur = NOTE[note] * beat;
@@ -164,7 +170,7 @@ function playRhythm(rhythm, tempo) {
   });
 }
 
-/* 選択肢生成（正解1＋誤答3＝4択） */
+/* 選択肢生成（正解1＋誤答3） */
 function generateChoices(correct, level) {
   let choices = [correct];
   while (choices.length < 4) {
@@ -235,7 +241,7 @@ function playCurrentRhythm() {
   }
 }
 
-/* 次の問題へ（ボタンで進む） */
+/* 次の問題へ */
 function nextQuestion() {
   if (questionCount >= 10) {
     finishQuiz();
