@@ -56,7 +56,7 @@ const LEVEL_NOTES = {
   6: ["whole", "dotted_half", "half", "quarter", "quarter_rest", "half_rest"]
 };
 
-/* 🎯 正しい記譜法：音符は統合しない／休符は統合する */
+/* 休符だけ統合（音符は統合しない） */
 function mergeRests(rhythm) {
   let merged = [];
   let restBuffer = 0;
@@ -84,31 +84,7 @@ function mergeRests(rhythm) {
   return merged;
 }
 
-/* 🎯 拍子に応じて必ず拍数ぶんの音符 or 休符を並べる（音符は複製しない） */
-function expandToBeats(rhythm) {
-  let beats = [];
-  let beatCount = 0;
-
-  rhythm.forEach(note => {
-    const length = NOTE[note];
-
-    // 音符は複製しない（打ち直しがあるため）
-    beats.push(note);
-
-    beatCount += length;
-  });
-
-  // 足りない拍は休符で埋める
-  while (beatCount < 4) {
-    beats.push("quarter_rest");
-    beatCount += 1;
-  }
-
-  // 4拍を超えたら切り捨て（安全装置）
-  return beats.slice(0, 4);
-}
-
-/* 🎯 リズム生成（音符は統合しない／休符は統合／拍子に合わせて展開） */
+/* 4拍ちょうどになるようにリズム生成（音符は統合しない／休符は統合） */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -124,18 +100,16 @@ function generateRhythm(level) {
   }
 
   rhythm = mergeRests(rhythm);
-  rhythm = expandToBeats(rhythm);
-
   return rhythm;
 }
 
-/* 🎵 モールス信号（柔らかい時報のような音） */
+/* 柔らかい時報のような音（モールス信号） */
 function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = "sine";        // 柔らかい音
-  osc.frequency.value = 520; // 時報のような優しい高さ
+  osc.type = "sine";
+  osc.frequency.value = 520;
 
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -165,7 +139,7 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
-/* 🎯 リズム再生（音符は打ち直し／休符は無音／拍位置は必ず鳴る） */
+/* リズム再生：音符も休符も NOTE[note] × 1拍の長さで扱う */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
@@ -179,15 +153,16 @@ function playRhythm(rhythm, tempo) {
 
   const start = t;
 
-  /* 拍位置のカスタネット（必ず鳴る） */
-  for (let i = 0; i < 4; i++) {
+  /* 拍位置のカスタネット（4拍ぶん必ず鳴る） */
+  const totalBeats = rhythm.reduce((sum, note) => sum + NOTE[note], 0);
+  for (let i = 0; i < totalBeats; i++) {
     playCastanet(start + i * beat, ctx);
   }
 
-  /* 本体（音符は鳴らす／休符は無音） */
+  /* 本体：音符は鳴らす／休符は無音、長さは NOTE[note] × beat */
   let cur = start;
   rhythm.forEach(note => {
-    const dur = beat;
+    const dur = NOTE[note] * beat;
 
     if (note.includes("rest")) {
       cur += dur;
@@ -198,12 +173,12 @@ function playRhythm(rhythm, tempo) {
   });
 }
 
-/* 譜例の見た目で比較（正解判定のズレ防止） */
+/* 見た目のパターン比較用（拍数パターンで判定） */
 function normalize(rhythm) {
   return rhythm.map(n => NOTE[n]).sort((a,b)=>a-b);
 }
 function isSamePattern(a, b) {
-  return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+  return JSON.stringify(normalize(a)) === JSON.stringify(b);
 }
 
 /* 選択肢生成（見た目が同じ譜例は除外） */
@@ -326,16 +301,10 @@ function nextQuestion() {
   document.getElementById("questionInfo").innerText =
     "問題 " + questionCount + " / 10";
 
-  /* ★ 正解のリズムを生成 */
   currentQuestion = generateRhythm(selectedLevel);
-
-  /* ★ 正しいリズムを再生 */
   playRhythm(currentQuestion, tempo);
 
-  /* ★ 正解は currentQuestion を使う */
   const choices = generateChoices(currentQuestion, selectedLevel);
-
-  /* ★ 表示も currentQuestion を使う */
   displayChoices(choices, currentQuestion);
 }
 
