@@ -1,50 +1,83 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ステップ4 木管楽器 - どっちが高い？（10問）</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 40px; }
-        button, .answer-button {
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
+<script>
+    const questions = [];
+    for (let i = 0; i < 10; i++) {
+        const base = 580;
+        const diff = (Math.random() > 0.5 ? 1 : -1) * (50 + Math.random() * 70);
+        questions.push({ baseFreq: base, secondFreq: base + diff });
+    }
+
+    let currentIndex = 0;
+    let correctAnswer = null;
+    let answered = false;
+    let score = 0;
+    let startTime = Date.now();
+
+    function updateQuestionInfo() {
+        document.getElementById("questionInfo").innerText =
+            "問題 " + (currentIndex + 1) + " / 10";
+    }
+
+    function playWoodwind(freq) {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+
+        filter.type = "lowpass";
+        filter.frequency.value = 1500;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        gain.gain.setValueAtTime(0.6, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 1.4);
+    }
+
+    function playQuestion() {
+        if (currentIndex >= questions.length) return;
+
+        answered = false;
+        document.getElementById("status").innerText = "";
+
+        const q = questions[currentIndex];
+        correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
+
+        playWoodwind(q.baseFreq);
+        setTimeout(() => playWoodwind(q.secondFreq), 900);
+    }
+
+    function checkAnswer(ans) {
+        if (currentIndex >= questions.length || answered) return;
+        answered = true;
+
+        if (ans === correctAnswer) {
+            score++;
+            document.getElementById("status").innerText = "⭕ 正解！";
+        } else {
+            document.getElementById("status").innerText = "❌ 不正解…";
         }
-        #playBtn { background: #4CAF50; color: white; } /* 木管っぽい緑 */
-        .answer-button { background: #2196F3; color: white; }
-        .answer-button:hover { background: #1976D2; }
-        #status { margin-top: 20px; font-size: 18px; }
-    </style>
-</head>
-<body>
 
-    <h1>ステップ4 木管楽器 - どっちが高い？</h1>
-    <p>木管楽器の音を聴いて、2番目の音が「高い」か「低い」か答えてください。（全10問）</p>
+        currentIndex++;
+        if (currentIndex < questions.length) {
+            updateQuestionInfo();
+        } else {
+            let endTime = Date.now();
+            let time = Math.floor((endTime - startTime) / 1000);
 
-    <p id="questionInfo">問題 1 / 10</p>
-
-    <button id="playBtn" onclick="playQuestion()">▶ 音を再生</button>
-
-    <div>
-        <button class="answer-button" onclick="checkAnswer('up')">↑ 高くなった</button>
-        <button class="answer-button" onclick="checkAnswer('down')">↓ 低くなった</button>
-    </div>
-
-    <p id="status"></p>
-
-    <p><a href="listen_step4.html">← ステップ選択に戻る</a></p>
-
-    <script>
-        // 10問分のランダム問題を生成
-        const questions = [];
-        for (let i = 0; i < 10; i++) {
-            const base = 330; // 木管らしい柔らかい高さ（E4）
-            const diff = (Math.random() > 0.5 ? 1 : -1) * (40 + Math.random() * 60);
-            questions.push({ baseFreq: base, secondFreq: base + diff });
+            document.getElementById("questionInfo").innerText = "終了（全10問）";
+            document.getElementById("status").innerText +=
+                "　総得点：" + score + "点　タイム：" + time + "秒";
         }
+    }
 
-        let currentIndex = 0;
-        let correctAnswer
+    updateQuestionInfo();
+</script>
+
+<p><a href="listen.html">← 聴くに戻る</a></p>
