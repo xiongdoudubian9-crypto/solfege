@@ -193,22 +193,7 @@ function generateChoices(correct, level) {
   return choices;
 }
 
-/* 譜例表示（4/4 拍子を追加） */
-function displayChoices(choices, correct) {
-  const div = document.getElementById("choices");
-  div.innerHTML = "";
-  choices.forEach(choice => {
-    const btn = document.createElement("button");
-    btn.innerHTML =
-      `<span style="font-size:20px; font-weight:bold;">4/4</span> ` +
-      choice.map(n => drawNoteSVG(n)).join("");
-    btn.onclick = () => checkAnswer(choice, correct);
-    div.appendChild(btn);
-    div.appendChild(document.createElement("br"));
-  });
-}
-
-/* SVG譜例（既存のまま） */
+/* SVG譜例 */
 function drawNoteSVG(note) {
   switch(note) {
     case "quarter":
@@ -244,6 +229,21 @@ function drawNoteSVG(note) {
         <circle cx="45" cy="50" r="5" fill="black"/>
       </svg>`;
   }
+}
+
+/* 譜例表示（4/4 拍子を追加） */
+function displayChoices(choices, correct) {
+  const div = document.getElementById("choices");
+  div.innerHTML = "";
+  choices.forEach(choice => {
+    const btn = document.createElement("button");
+    btn.innerHTML =
+      `<span style="font-size:20px; font-weight:bold;">4/4</span> ` +
+      choice.map(n => drawNoteSVG(n)).join("");
+    btn.onclick = () => checkAnswer(choice, correct);
+    div.appendChild(btn);
+    div.appendChild(document.createElement("br"));
+  });
 }
 
 /* 画面状態 */
