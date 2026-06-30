@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ステップ4 木管楽器 - どっちが高い？（10問）</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 40px; }
+        button, .answer-button {
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        #playBtn { background: #4CAF50; color: white; } /* 木管っぽい緑 */
+        .answer-button { background: #2196F3; color: white; }
+        .answer-button:hover { background: #1976D2; }
+        #status { margin-top: 20px; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <h1>ステップ4 木管楽器 - どっちが高い？</h1>
+    <p>木管楽器の音を聴いて、2番目の音が「高い」か「低い」か答えてください。（全10問）</p>
+
+    <p id="questionInfo">問題 1 / 10</p>
+
+    <button id="playBtn" onclick="playQuestion()">▶ 音を再生</button>
+
+    <div>
+        <button class="answer-button" onclick="checkAnswer('up')">↑ 高くなった</button>
+        <button class="answer-button" onclick="checkAnswer('down')">↓ 低くなった</button>
+    </div>
+
+    <p id="status"></p>
+
+    <p><a href="listen_step4.html">← ステップ選択に戻る</a></p>
+
+    <script>
+        // 10問分のランダム問題を生成
+        const questions = [];
+        for (let i = 0; i < 10; i++) {
+            const base = 330; // 木管らしい柔らかい高さ（E4）
+            const diff = (Math.random() > 0.5 ? 1 : -1) * (40 + Math.random() * 60);
+            questions.push({ baseFreq: base, secondFreq: base + diff });
+        }
+
+        let currentIndex = 0;
+        let correctAnswer
