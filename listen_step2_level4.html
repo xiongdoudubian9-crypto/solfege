@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ステップ2 レベル4 - どっちが高い？</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 40px;
+        }
+        .answer-button {
+            display: inline-block;
+            padding: 20px 40px;
+            margin: 20px;
+            font-size: 28px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .answer-button:hover {
+            background: #43A047;
+        }
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ステップ2 レベル4</h1>
+    <p>2つの音を聴いて、2番目の音が「高い」か「低い」か答えてください。</p>
+
+    <button onclick="playSounds()">▶ 音を再生</button>
+
+    <div>
+        <a class="answer-button" href="#" onclick="checkAnswer('up')">↑ 高くなった</a>
+        <a class="answer-button" href="#" onclick="checkAnswer('down')">↓ 低くなった</a>
+    </div>
+
+    <p id="result"></p>
+
+    <p><a href="listen_step2.html">← レベル選択に戻る</a></p>
+
+    <script>
+        let correctAnswer = null;
+
+        function playSounds() {
+            // 仮の音（後で本物の音源に差し替えます）
+            const base = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+            const high = new Audio("https://actions.google.com/sounds/v1/cartoon/slide_whistle_to_drum_hit.ogg");
+            const low = new Audio("https://actions.google.com/sounds/v1/cartoon/descending_whistle.ogg");
+
+            base.play();
+
+            setTimeout(() => {
+                if (Math.random() > 0.5) {
+                    high.play();
+                    correctAnswer = "up";
+                } else {
+                    low.play();
+                    correctAnswer = "down";
+                }
+            }, 800);
+        }
+
+        function checkAnswer(ans) {
+            if (ans === correctAnswer) {
+                document.getElementById("result").innerText = "⭕ 正解！";
+            } else {
+                document.getElementById("result").innerText = "❌ 不正解…";
+            }
+        }
+    </script>
+
+</body>
+</html>
