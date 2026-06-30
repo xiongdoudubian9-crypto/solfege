@@ -1,120 +1,97 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>裏ステージ 動物の鳴き声 - どっちが高い？（10問）</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 40px; }
-        button, .answer-button {
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-        }
-        #playBtn { background: #795548; color: white; } /* 動物っぽい茶色 */
-        .answer-button { background: #607D8B; color: white; }
-        .answer-button:hover { background: #546E7A; }
-        #status { margin-top: 20px; font-size: 18px; }
-    </style>
-</head>
-<body>
+<script>
+    // 10問分のランダム問題を生成（動物は周波数ではなくノイズの高さで判定）
+    const questions = [];
+    for (let i = 0; i < 10; i++) {
+        const base = Math.random() * 0.4 + 0.3;   // ノイズの強さ（低め）
+        const diff = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 0.3);
+        questions.push({ baseLevel: base, secondLevel: base + diff });
+    }
 
-    <h1>裏ステージ 動物の鳴き声 - どっちが高い？</h1>
-    <p>動物の鳴き声（仮の音）を聴いて、2番目の音が「高い」か「低い」か答えてください。（全10問）</p>
+    let currentIndex = 0;
+    let correctAnswer = null;
+    let answered = false;
 
-    <p id="questionInfo">問題 1 / 10</p>
+    // ★ 総得点
+    let score = 0;
 
-    <button id="playBtn" onclick="playQuestion()">▶ 音を再生</button>
+    // ★ タイム計測
+    let startTime = Date.now();
 
-    <div>
-        <button class="answer-button" onclick="checkAnswer('up')">↑ 高くなった</button>
-        <button class="answer-button" onclick="checkAnswer('down')">↓ 低くなった</button>
-    </div>
+    function updateQuestionInfo() {
+        document.getElementById("questionInfo").innerText =
+            "問題 " + (currentIndex + 1) + " / 10";
+    }
 
-    <p id="status"></p>
+    // ★ 動物の鳴き声風ノイズ
+    function playAnimal(level) {
+        const ctx = new AudioContext();
+        const bufferSize = 2 * ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
 
-    <p><a href="listen_step_extra.html">← ステップ選択に戻る</a></p>
-
-    <script>
-        // 10問分のランダム問題を生成
-        const questions = [];
-        for (let i = 0; i < 10; i++) {
-            const base = 300; // 仮の鳴き声の基準音
-            const diff = (Math.random() > 0.5 ? 1 : -1) * (60 + Math.random() * 80);
-            questions.push({ baseFreq: base, secondFreq: base + diff });
+        // ホワイトノイズ生成
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = (Math.random() * 2 - 1) * level;
         }
 
-        let currentIndex = 0;
-        let correctAnswer = null;
-        let answered = false;
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
 
-        function updateQuestionInfo() {
-            document.getElementById("questionInfo").innerText =
-                "問題 " + (currentIndex + 1) + " / 10";
+        // フィルターで動物っぽい音にする
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 600 + Math.random() * 800;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.8, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start();
+        noise.stop(ctx.currentTime + 0.8);
+    }
+
+    function playQuestion() {
+        if (currentIndex >= questions.length) return;
+
+        answered = false;
+        document.getElementById("status").innerText = "";
+
+        const q = questions[currentIndex];
+        correctAnswer = q.secondLevel > q.baseLevel ? "up" : "down";
+
+        playAnimal(q.baseLevel);
+        setTimeout(() => playAnimal(q.secondLevel), 900);
+    }
+
+    function checkAnswer(ans) {
+        if (currentIndex >= questions.length || answered) return;
+        answered = true;
+
+        if (ans === correctAnswer) {
+            score++;
+            document.getElementById("status").innerText = "⭕ 正解！";
+        } else {
+            document.getElementById("status").innerText = "❌ 不正解…";
         }
 
-        // 仮の動物の鳴き声（ノイズ音）
-        function playAnimalNoise(freq) {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const bufferSize = 2 * ctx.sampleRate;
-            const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
+        currentIndex++;
+        if (currentIndex < questions.length) {
+            updateQuestionInfo();
+        } else {
+            let endTime = Date.now();
+            let time = Math.floor((endTime - startTime) / 1000);
 
-            // ノイズ生成
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = (Math.random() * 2 - 1) * 0.5;
-            }
-
-            const noise = ctx.createBufferSource();
-            noise.buffer = noiseBuffer;
-
-            const filter = ctx.createBiquadFilter();
-            filter.type = "bandpass";
-            filter.frequency.value = freq; // 鳴き声の高さをここで調整
-
-            noise.connect(filter);
-            filter.connect(ctx.destination);
-
-            noise.start();
-            noise.stop(ctx.currentTime + 0.5);
+            document.getElementById("questionInfo").innerText = "終了（全10問）";
+            document.getElementById("status").innerText +=
+                "　総得点：" + score + "点　タイム：" + time + "秒";
         }
+    }
 
-        function playQuestion() {
-            if (currentIndex >= questions.length) return;
+    updateQuestionInfo();
+</script>
 
-            answered = false;
-            document.getElementById("status").innerText = "";
-
-            const q = questions[currentIndex];
-            correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
-
-            playAnimalNoise(q.baseFreq);
-            setTimeout(() => playAnimalNoise(q.secondFreq), 600);
-        }
-
-        function checkAnswer(ans) {
-            if (currentIndex >= questions.length || answered) return;
-            answered = true;
-
-            if (ans === correctAnswer) {
-                document.getElementById("status").innerText = "⭕ 正解！";
-            } else {
-                document.getElementById("status").innerText = "❌ 不正解…";
-            }
-
-            currentIndex++;
-            if (currentIndex < questions.length) {
-                updateQuestionInfo();
-            } else {
-                document.getElementById("questionInfo").innerText = "終了（全10問）";
-                document.getElementById("status").innerText += "　おつかれさまでした！";
-            }
-        }
-
-        updateQuestionInfo();
-    </script>
-
-</body>
-</html>
+<p><a href="listen.html">← 聴くに戻る</a></p>
