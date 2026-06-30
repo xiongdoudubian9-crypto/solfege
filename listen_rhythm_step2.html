@@ -32,7 +32,7 @@
 </div>
 
 <script>
-/* 1拍単位で扱う（内部は必ず4拍になる） */
+/* 内部はすべて1拍単位 */
 const NOTE_BEATS = {
   "quarter": 1,
   "eighth_pair": 1,
@@ -48,7 +48,7 @@ const LEVEL_NOTES = {
   3: ["quarter", "eighth_pair", "sixteenth_group", "quarter_rest", "eighth_rest_pair"]
 };
 
-/* 休符だけ統合（音符は統合しない） */
+/* 休符統合：拍数に応じて正しい休符に変換する */
 function mergeRests(rhythm) {
   let merged = [];
   let restBuffer = 0;
@@ -58,16 +58,25 @@ function mergeRests(rhythm) {
       restBuffer += NOTE_BEATS[note];
     } else {
       if (restBuffer > 0) {
-        merged.push("quarter_rest");
+        merged.push(convertRest(restBuffer));
         restBuffer = 0;
       }
       merged.push(note);
     }
   });
 
-  if (restBuffer > 0) merged.push("quarter_rest");
+  if (restBuffer > 0) merged.push(convertRest(restBuffer));
 
   return merged;
+}
+
+/* 拍数に応じて正しい休符に変換 */
+function convertRest(beats) {
+  if (beats === 1) return "quarter_rest";
+  if (beats === 2) return "half_rest";
+  if (beats === 3) return "dotted_half_rest";
+  if (beats === 4) return "whole_rest";
+  return "quarter_rest"; // fallback
 }
 
 /* 一小節（4拍）を必ず満たす内部リズム生成 */
@@ -102,7 +111,7 @@ function playMorse(time, duration, ctx) {
   osc.stop(time + duration);
 }
 
-/* カスタネット（拍位置） */
+/* カスタネット */
 function playCastanet(time, ctx) {
   const noise = ctx.createBufferSource();
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -125,7 +134,7 @@ function playRhythm(rhythm, tempo) {
   const beat = 60 / tempo;
   let t = ctx.currentTime;
 
-  /* 予備拍（4拍） */
+  /* 予備拍 */
   for (let i = 0; i < 4; i++) {
     playCastanet(t, ctx);
     t += beat;
@@ -133,7 +142,7 @@ function playRhythm(rhythm, tempo) {
 
   const start = t;
 
-  /* 一小節カスタネット（4拍） */
+  /* 一小節カスタネット */
   for (let i = 0; i < 4; i++) {
     playCastanet(start + i * beat, ctx);
   }
@@ -214,11 +223,17 @@ function drawNoteSVG(note) {
     case "quarter_rest":
       return `<svg width="40" height="80"><path d="M20 10 L25 20 L15 30 L25 40 L15 50" stroke="black" stroke-width="4" fill="none"/></svg>`;
 
-    case "eighth_rest_pair":
-      return `<svg width="40" height="80">
-        <path d="M20 10 L25 20 L20 30" stroke="black" stroke-width="4" fill="none"/>
-        <path d="M25 20 L30 30 L25 40" stroke="black" stroke-width="4" fill="none"/>
+    case "half_rest":
+      return `<svg width="40" height="80"><rect x="10" y="30" width="20" height="10" fill="black"/></svg>`;
+
+    case "dotted_half_rest":
+      return `<svg width="60" height="80">
+        <rect x="10" y="30" width="20" height="10" fill="black"/>
+        <circle cx="40" cy="35" r="5" fill="black"/>
       </svg>`;
+
+    case "whole_rest":
+      return `<svg width="40" height="80"><rect x="10" y="40" width="20" height="10" fill="black"/></svg>`;
   }
 }
 
