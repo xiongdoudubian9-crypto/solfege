@@ -1,8 +1,16 @@
+<h2>ステップ1（ピアノ）</h2>
+
+<p id="questionInfo"></p>
+<p id="status"></p>
+
+<button onclick="playQuestion()">▶ 音を聞く</button>
+<button onclick="checkAnswer('up')">↑ 高くなった</button>
+<button onclick="checkAnswer('down')">↓ 低くなった</button>
+
 <script>
-    // 10問分のランダム問題を生成
     const questions = [];
     for (let i = 0; i < 10; i++) {
-        const base = 440; // ピアノの基準音
+        const base = 440;
         const diff = (Math.random() > 0.5 ? 1 : -1) * (40 + Math.random() * 60);
         questions.push({ baseFreq: base, secondFreq: base + diff });
     }
@@ -10,11 +18,7 @@
     let currentIndex = 0;
     let correctAnswer = null;
     let answered = false;
-
-    // ★ 追加：総得点
     let score = 0;
-
-    // ★ 追加：タイム計測
     let startTime = Date.now();
 
     function updateQuestionInfo() {
@@ -22,8 +26,8 @@
             "問題 " + (currentIndex + 1) + " / 10";
     }
 
-    function playTone(freq) {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function playPiano(freq) {
+        const ctx = new AudioContext();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
@@ -33,11 +37,11 @@
         osc.connect(gain);
         gain.connect(ctx.destination);
 
-        gain.gain.setValueAtTime(0.7, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+        gain.gain.setValueAtTime(0.8, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
 
         osc.start();
-        osc.stop(ctx.currentTime + 1.0);
+        osc.stop(ctx.currentTime + 1.2);
     }
 
     function playQuestion() {
@@ -49,8 +53,8 @@
         const q = questions[currentIndex];
         correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
 
-        playTone(q.baseFreq);
-        setTimeout(() => playTone(q.secondFreq), 800);
+        playPiano(q.baseFreq);
+        setTimeout(() => playPiano(q.secondFreq), 900);
     }
 
     function checkAnswer(ans) {
@@ -58,7 +62,7 @@
         answered = true;
 
         if (ans === correctAnswer) {
-            score++; // ★ 正解なら得点アップ
+            score++;
             document.getElementById("status").innerText = "⭕ 正解！";
         } else {
             document.getElementById("status").innerText = "❌ 不正解…";
@@ -68,17 +72,9 @@
         if (currentIndex < questions.length) {
             updateQuestionInfo();
         } else {
-            // ★ 終了処理：タイム計測
             let endTime = Date.now();
             let time = Math.floor((endTime - startTime) / 1000);
 
             document.getElementById("questionInfo").innerText = "終了（全10問）";
             document.getElementById("status").innerText +=
-                "　総得点：" + score + "点　タイム：" + time + "秒";
-        }
-    }
-
-    updateQuestionInfo();
-</script>
-
-<p><a href="listen.html">← 聴くに戻る</a></p>
+                "　総得点：" + score
