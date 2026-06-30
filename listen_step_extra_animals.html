@@ -1,5 +1,14 @@
+<h2>ステップ（どうぶつの鳴き声）</h2>
+
+<p id="questionInfo"></p>
+<p id="status"></p>
+
+<button onclick="playQuestion()">▶ 音を聞く</button>
+<button onclick="checkAnswer('up')">↑ 高くなった</button>
+<button onclick="checkAnswer('down')">↓ 低くなった</button>
+
 <script>
-    // 10問分のランダム問題を生成（動物は周波数ではなくノイズの高さで判定）
+    // 10問分のランダム問題を生成（動物はノイズの強さで判定）
     const questions = [];
     for (let i = 0; i < 10; i++) {
         const base = Math.random() * 0.4 + 0.3;   // ノイズの強さ（低め）
