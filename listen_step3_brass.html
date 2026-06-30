@@ -1,113 +1,83 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ステップ3 金管楽器 - どっちが高い？（10問）</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 40px; }
-        button, .answer-button {
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-        }
-        #playBtn { background: #FF9800; color: white; } /* 金管っぽい色 */
-        .answer-button { background: #4CAF50; color: white; }
-        .answer-button:hover { background: #43A047; }
-        #status { margin-top: 20px; font-size: 18px; }
-    </style>
-</head>
-<body>
+<script>
+    const questions = [];
+    for (let i = 0; i < 10; i++) {
+        const base = 500;
+        const diff = (Math.random() > 0.5 ? 1 : -1) * (60 + Math.random() * 80);
+        questions.push({ baseFreq: base, secondFreq: base + diff });
+    }
 
-    <h1>ステップ3 金管楽器 - どっちが高い？</h1>
-    <p>金管楽器の音を聴いて、2番目の音が「高い」か「低い」か答えてください。（全10問）</p>
+    let currentIndex = 0;
+    let correctAnswer = null;
+    let answered = false;
+    let score = 0;
+    let startTime = Date.now();
 
-    <p id="questionInfo">問題 1 / 10</p>
+    function updateQuestionInfo() {
+        document.getElementById("questionInfo").innerText =
+            "問題 " + (currentIndex + 1) + " / 10";
+    }
 
-    <button id="playBtn" onclick="playQuestion()">▶ 音を再生</button>
+    function playBrass(freq) {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
 
-    <div>
-        <button class="answer-button" onclick="checkAnswer('up')">↑ 高くなった</button>
-        <button class="answer-button" onclick="checkAnswer('down')">↓ 低くなった</button>
-    </div>
+        osc.type = "square";
+        osc.frequency.value = freq;
 
-    <p id="status"></p>
+        filter.type = "bandpass";
+        filter.frequency.value = 800;
 
-    <p><a href="listen_step3.html">← ステップ選択に戻る</a></p>
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
 
-    <script>
-        // 10問分のランダム問題を生成
-        const questions = [];
-        for (let i = 0; i < 10; i++) {
-            const base = 220; // 金管らしい低めの基準音（A3）
-            const diff = (Math.random() > 0.5 ? 1 : -1) * (40 + Math.random() * 60);
-            questions.push({ baseFreq: base, secondFreq: base + diff });
-        }
+        gain.gain.setValueAtTime(0.7, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.3);
 
-        let currentIndex = 0;
-        let correctAnswer = null;
-        let answered = false;
+        osc.start();
+        osc.stop(ctx.currentTime + 1.3);
+    }
 
-        function updateQuestionInfo() {
-            document.getElementById("questionInfo").innerText =
-                "問題 " + (currentIndex + 1) + " / 10";
-        }
+    function playQuestion() {
+        if (currentIndex >= questions.length) return;
 
-        // 金管風の音（sawtooth波形＋強めのアタック）
-        function playTone(freq) {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+        answered = false;
+        document.getElementById("status").innerText = "";
 
-            osc.type = "sawtooth"; // 金管風の仮音色（後で差し替え可）
-            osc.frequency.value = freq;
+        const q = questions[currentIndex];
+        correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
 
-            osc.connect(gain);
-            gain.connect(ctx.destination);
+        playBrass(q.baseFreq);
+        setTimeout(() => playBrass(q.secondFreq), 900);
+    }
 
-            gain.gain.setValueAtTime(0.9, ctx.currentTime); // 強めのアタック
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+    function checkAnswer(ans) {
+        if (currentIndex >= questions.length || answered) return;
+        answered = true;
 
-            osc.start();
-            osc.stop(ctx.currentTime + 1.0);
+        if (ans === correctAnswer) {
+            score++;
+            document.getElementById("status").innerText = "⭕ 正解！";
+        } else {
+            document.getElementById("status").innerText = "❌ 不正解…";
         }
 
-        function playQuestion() {
-            if (currentIndex >= questions.length) return;
+        currentIndex++;
+        if (currentIndex < questions.length) {
+            updateQuestionInfo();
+        } else {
+            let endTime = Date.now();
+            let time = Math.floor((endTime - startTime) / 1000);
 
-            answered = false;
-            document.getElementById("status").innerText = "";
-
-            const q = questions[currentIndex];
-            correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
-
-            playTone(q.baseFreq);
-            setTimeout(() => playTone(q.secondFreq), 800);
+            document.getElementById("questionInfo").innerText = "終了（全10問）";
+            document.getElementById("status").innerText +=
+                "　総得点：" + score + "点　タイム：" + time + "秒";
         }
+    }
 
-        function checkAnswer(ans) {
-            if (currentIndex >= questions.length || answered) return;
-            answered = true;
+    updateQuestionInfo();
+</script>
 
-            if (ans === correctAnswer) {
-                document.getElementById("status").innerText = "⭕ 正解！";
-            } else {
-                document.getElementById("status").innerText = "❌ 不正解…";
-            }
-
-            currentIndex++;
-            if (currentIndex < questions.length) {
-                updateQuestionInfo();
-            } else {
-                document.getElementById("questionInfo").innerText = "終了（全10問）";
-                document.getElementById("status").innerText += "　おつかれさまでした！";
-            }
-        }
-
-        updateQuestionInfo();
-    </script>
-
-</body>
-</html>
+<p><a href="listen.html">← 聴くに戻る</a></p>
