@@ -1,6 +1,5 @@
 <h2>リズムかるた：ステップ1（低学年）</h2>
 
-<!-- レベル選択画面 -->
 <div id="screen-level">
   <p>レベルを選んでください。</p>
   <button onclick="selectLevel(1)">レベル1（四分音符・四分休符）</button><br>
@@ -11,7 +10,6 @@
   <button onclick="selectLevel(6)">レベル6（付点二分音符を追加）</button><br>
 </div>
 
-<!-- テンポ選択画面 -->
 <div id="screen-tempo" style="display:none;">
   <p>レベル <span id="levelLabel"></span> が選ばれました。</p>
   <p>テンポを選んでください。</p>
@@ -26,7 +24,6 @@
   <button onclick="backToLevel()">← レベル選択に戻る</button>
 </div>
 
-<!-- クイズ画面 -->
 <div id="screen-quiz" style="display:none;">
   <p id="questionInfo"></p>
   <p id="status"></p>
@@ -38,7 +35,6 @@
 </div>
 
 <script>
-/* 拍数定義 */
 const NOTE = {
   "whole": 4,
   "half": 2,
@@ -48,7 +44,6 @@ const NOTE = {
   "dotted_half": 3
 };
 
-/* レベルごとの使用音符 */
 const LEVEL_NOTES = {
   1: ["quarter", "quarter_rest"],
   2: ["half", "quarter", "quarter_rest"],
@@ -58,7 +53,6 @@ const LEVEL_NOTES = {
   6: ["whole", "dotted_half", "half", "quarter", "quarter_rest", "half_rest"]
 };
 
-/* SVG譜例（教科書風） */
 function drawNoteSVG(note) {
   switch(note) {
     case "quarter":
@@ -92,7 +86,6 @@ function drawNoteSVG(note) {
   }
 }
 
-/* カスタネット（テンポ刻み） */
 function playCastanet(time, ctx) {
   const noise = ctx.createBufferSource();
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -109,21 +102,24 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
-/* モールス信号風（リズム本体） */
 function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
+
   osc.type = "square";
   osc.frequency.value = 900;
+
   osc.connect(gain);
   gain.connect(ctx.destination);
+
   gain.gain.setValueAtTime(1.0, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+  gain.gain.setValueAtTime(1.0, time + duration - 0.01);
+  gain.gain.linearRampToValueAtTime(0.0, time + duration);
+
   osc.start(time);
   osc.stop(time + duration);
 }
 
-/* 1小節リズム生成（4拍） */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -139,38 +135,35 @@ function generateRhythm(level) {
   return rhythm;
 }
 
-/* ★ 完全同期版：リズム再生 */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
   let t = ctx.currentTime;
 
-  // 予備拍4つ
   for (let i = 0; i < 4; i++) {
     playCastanet(t, ctx);
     t += beat;
   }
 
   const start = t;
-
-  // ★ 本体の総拍数を計算
   const totalBeats = rhythm.reduce((sum, note) => sum + NOTE[note], 0);
 
-  // ★ テンポ刻み（総拍数ぶん鳴らす）
   for (let i = 0; i < totalBeats; i++) {
     playCastanet(start + i * beat, ctx);
   }
 
-  // 本体リズム（モールス）
   let cur = start;
   rhythm.forEach(note => {
     const dur = NOTE[note] * beat;
-    playMorse(cur, dur, ctx);
-    cur += dur;
+    if (note.includes("rest")) {
+      cur += dur;
+    } else {
+      playMorse(cur, dur, ctx);
+      cur += dur;
+    }
   });
 }
 
-/* 選択肢生成（正解1＋誤答3） */
 function generateChoices(correct, level) {
   let choices = [correct];
   while (choices.length < 4) {
@@ -183,7 +176,6 @@ function generateChoices(correct, level) {
   return choices;
 }
 
-/* 譜例表示 */
 function displayChoices(choices, correct) {
   const div = document.getElementById("choices");
   div.innerHTML = "";
@@ -196,7 +188,6 @@ function displayChoices(choices, correct) {
   });
 }
 
-/* 画面状態 */
 let selectedLevel = null;
 let tempo = 80;
 let currentQuestion = null;
@@ -204,7 +195,6 @@ let questionCount = 0;
 let score = 0;
 let startTime = 0;
 
-/* レベル選択 */
 function selectLevel(level) {
   selectedLevel = level;
   document.getElementById("levelLabel").innerText = level;
@@ -212,7 +202,6 @@ function selectLevel(level) {
   document.getElementById("screen-tempo").style.display = "block";
 }
 
-/* レベル選択に戻る */
 function backToLevel() {
   document.getElementById("screen-tempo").style.display = "none";
   document.getElementById("screen-quiz").style.display = "none";
@@ -222,7 +211,6 @@ function backToLevel() {
   document.getElementById("choices").innerHTML = "";
 }
 
-/* スタート */
 function startQuiz() {
   tempo = parseInt(document.getElementById("tempoSelect").value);
   score = 0;
@@ -234,14 +222,12 @@ function startQuiz() {
   nextQuestion();
 }
 
-/* 現在のリズムを再生 */
 function playCurrentRhythm() {
   if (currentQuestion) {
     playRhythm(currentQuestion, tempo);
   }
 }
 
-/* 次の問題へ */
 function nextQuestion() {
   if (questionCount >= 10) {
     finishQuiz();
@@ -263,7 +249,6 @@ function nextQuestion() {
   displayChoices(choices, rhythm);
 }
 
-/* 正誤判定 */
 function checkAnswer(selected, correct) {
   if (JSON.stringify(selected) === JSON.stringify(correct)) {
     score++;
@@ -274,7 +259,6 @@ function checkAnswer(selected, correct) {
   document.getElementById("nextBtn").disabled = false;
 }
 
-/* 終了処理 */
 function finishQuiz() {
   const time = Math.floor((Date.now() - startTime) / 1000);
   document.getElementById("questionInfo").innerText = "終了（全10問）";
