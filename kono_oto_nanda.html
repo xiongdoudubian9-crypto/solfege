@@ -17,6 +17,10 @@
 
 <h2>この音なんだ？（単音読み取り）</h2>
 
+<!-- ト音記号・へ音記号のSVG画像（非表示で読み込んでおく） -->
+<img id="trebleClef" src="treble_clef.svg" style="display:none;">
+<img id="bassClef" src="bass_clef.svg" style="display:none;">
+
 <div id="screen-step">
   <p>ステップを選んでください。</p>
   <button onclick="selectStep(1)">ステップ1（ト音記号 C4〜B4）</button><br>
@@ -128,7 +132,7 @@ function backToStep() {
 // レベル選択
 function selectLevel(level) {
   currentLevel = level;
-  questions = STEP_LEVELS[currentStep][currentLevel].slice(); // 出題音リスト
+  questions = STEP_LEVELS[currentStep][currentLevel].slice();
   currentIndex = 0;
   score = 0;
 
@@ -162,7 +166,6 @@ function nextQuestion() {
   document.getElementById("status").innerText = "";
   document.getElementById("nextBtn").disabled = true;
 
-  // ランダムに1音選ぶ
   const pool = STEP_LEVELS[currentStep][currentLevel];
   const noteName = pool[Math.floor(Math.random() * pool.length)];
   questions[currentIndex] = noteName;
@@ -176,7 +179,7 @@ function nextQuestion() {
 // 回答処理
 function answer(letter) {
   const correctNote = questions[currentIndex];
-  const correctLetter = correctNote[0]; // C4 → 'C'
+  const correctLetter = correctNote[0];
 
   if (letter === correctLetter) {
     score++;
@@ -198,17 +201,18 @@ function finishQuiz() {
   document.getElementById("nextBtn").disabled = true;
 }
 
-// 五線譜＋音符描画
+// 五線譜＋音部記号＋音符描画
 function drawStaffAndNote(noteName) {
   const canvas = document.getElementById("staff");
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 五線描画（ト音記号・へ音記号共通で中央付近に）
   const top = 60;
   const spacing = 10;
+
+  // 五線描画（本物っぽく）
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   for (let i = 0; i < 5; i++) {
     const y = top + i * spacing;
     ctx.beginPath();
@@ -217,77 +221,68 @@ function drawStaffAndNote(noteName) {
     ctx.stroke();
   }
 
-  // 記号（簡易：ト音記号／へ音記号の文字）
-  ctx.font = "24px serif";
-  ctx.fillStyle = "#000";
+  const midi = NOTES[noteName];
+
+  // 音部記号描画（ト音記号／へ音記号）
   if (currentStep === 4 || (currentStep === 5 && isBass(noteName))) {
-    ctx.fillText("𝄢", 50, top + 3 * spacing); // へ音記号風
+    const img = document.getElementById("bassClef");
+    ctx.drawImage(img, 40, top - 10, 60, 120);
   } else {
-    ctx.fillText("𝄞", 50, top + 2 * spacing); // ト音記号風
+    const img = document.getElementById("trebleClef");
+    ctx.drawImage(img, 40, top - 35, 60, 140);
   }
 
   // 音符位置計算
-  const midi = NOTES[noteName];
   const y = getNoteY(midi, currentStep);
 
-  // 音符描画
+  // 音符（丸譜）描画
   const x = 220;
+  ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.ellipse(x, y, 7, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 加線（必要なら）
+  // 加線描画
   drawLedgerLines(ctx, x, midi, currentStep, top, spacing);
 }
 
-// ト音記号／へ音記号の判定（総合ステップ用）
+// 総合ステップでのへ音記号判定
 function isBass(noteName) {
   const midi = NOTES[noteName];
-  return midi <= NOTES["C4"]; // C4以下はへ音記号側とみなす簡易ルール
+  return midi <= NOTES["C4"];
 }
 
-// 音符のY座標計算（簡易版）
+// 音符のY座標計算（簡易だが楽譜っぽく）
 function getNoteY(midi, step) {
-  // ト音記号の基準：B4を第3線（上から3本目）あたりに
-  // へ音記号の基準：D3を第3線あたりに
   const top = 60;
   const spacing = 10;
 
   let baseMidi, baseLineIndex;
   if (step === 4 || (step === 5 && midi <= NOTES["C4"])) {
-    // へ音記号側
-    baseMidi = NOTES["D3"];      // D3を第3線
-    baseLineIndex = 2;          // 0〜4のうち2番目
+    baseMidi = NOTES["D3"];   // へ音記号：D3を第3線
+    baseLineIndex = 2;
   } else {
-    // ト音記号側
-    baseMidi = NOTES["B4"];      // B4を第3線
+    baseMidi = NOTES["B4"];   // ト音記号：B4を第3線
     baseLineIndex = 2;
   }
 
   const diff = midi - baseMidi;
-  // 1音（半音）ごとに上下 3px くらい動かす簡易計算
   const yBase = top + baseLineIndex * spacing;
   const y = yBase - diff * 3;
   return y;
 }
 
-// 加線描画（簡易）
+// 加線描画
 function drawLedgerLines(ctx, x, midi, step, top, spacing) {
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 1;
 
-  // ト音記号側の加線範囲（C5〜C6、A3〜B3など）
-  // へ音記号側の加線範囲（C2〜C3など）
-  // 簡易的に「五線の外に出たら適宜加線を描く」ルール
-
   const yTopLine = top;
   const yBottomLine = top + 4 * spacing;
-
   const y = getNoteY(midi, step);
 
   // 上側加線
   if (y < yTopLine - spacing) {
-    // 何本必要かざっくり計算
     let n = Math.round((yTopLine - y) / spacing);
     for (let i = 1; i <= n; i++) {
       const yy = yTopLine - i * spacing;
@@ -312,7 +307,7 @@ function drawLedgerLines(ctx, x, midi, step, top, spacing) {
 }
 </script>
 
-<p><a href="listen_read.html">← 読むメニューに戻る</a></p>
+<p><a href="read.html">← 読むメニューに戻る</a></p>
 
 </body>
 </html>
