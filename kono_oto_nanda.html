@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>この音なんだ？</title>
+<title>この音なんだ？（完全版）</title>
 <style>
   body { font-family: sans-serif; }
   #staff { border: 1px solid #ccc; margin: 10px 0; }
@@ -15,9 +15,9 @@
 </head>
 <body>
 
-<h2>この音なんだ？（単音読み取り）</h2>
+<h2>この音なんだ？（単音読み取り・楽譜規格準拠版）</h2>
 
-<!-- ト音記号・へ音記号のSVG画像（非表示で読み込んでおく） -->
+<!-- 本物仕様のト音記号・へ音記号SVG -->
 <img id="trebleClef" src="treble_clef.svg" style="display:none;">
 <img id="bassClef" src="bass_clef.svg" style="display:none;">
 
@@ -38,7 +38,7 @@
 
 <div id="screen-quiz" style="display:none;">
   <p id="quizInfo"></p>
-  <canvas id="staff" width="400" height="200"></canvas>
+  <canvas id="staff" width="400" height="220"></canvas>
   <p>この音はどれ？（ド〜シ）</p>
   <div id="noteButtons"></div>
   <p id="status"></p>
@@ -46,7 +46,7 @@
 </div>
 
 <script>
-// 音名とMIDI番号の対応（C4=60）
+// MIDI対応
 const NOTES = {
   "C2": 36, "D2": 38, "E2": 40, "F2": 41, "G2": 43, "A2": 45, "B2": 47,
   "C3": 48, "D3": 50, "E3": 52, "F3": 53, "G3": 55, "A3": 57, "B3": 59,
@@ -55,20 +55,11 @@ const NOTES = {
   "C6": 84
 };
 
-// ソルフェージ用の「ド〜シ」ラベル
-const SOLFEGE = {
-  "C": "ド",
-  "D": "レ",
-  "E": "ミ",
-  "F": "ファ",
-  "G": "ソ",
-  "A": "ラ",
-  "B": "シ"
-};
+const SOLFEGE = { "C":"ド","D":"レ","E":"ミ","F":"ファ","G":"ソ","A":"ラ","B":"シ" };
 
-// ステップごとの出題音セット
+// ステップ仕様
 const STEP_LEVELS = {
-  1: { // ト音記号 C4〜B4
+  1: {
     1: ["C4","D4"],
     2: ["C4","D4","E4"],
     3: ["C4","D4","E4","F4"],
@@ -76,22 +67,22 @@ const STEP_LEVELS = {
     5: ["C4","D4","E4","F4","G4","A4"],
     6: ["C4","D4","E4","F4","G4","A4","B4"]
   },
-  2: { // ト音記号 C4〜G5
+  2: {
     1: ["C4","D4","E4","F4","G4","A4","B4","C5"],
     2: ["C4","D4","E4","F4","G4","A4","B4","C5","D5"],
     3: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5"],
     4: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5"],
     5: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5"]
   },
-  3: { // ト音記号 加線2本まで
+  3: {
     1: ["A3","B3","C5","D5","E5","F5","G5"],
     2: ["A3","B3","C5","D5","E5","F5","G5","A5","B5","C6"]
   },
-  4: { // へ音記号 C4〜C2
+  4: {
     1: ["C4","B4","A4","G4","F4","E4","D4","C3"],
     2: ["C4","B4","A4","G4","F4","E4","D4","C3","B3","A3","G3","F3","E3","D3","C2"]
   },
-  5: { // 総合 C2〜C6
+  5: {
     1: ["C2","D2","E2","F2","G2","A2","B2",
         "C3","D3","E3","F3","G3","A3","B3",
         "C4","D4","E4","F4","G4","A4","B4",
@@ -143,7 +134,7 @@ function selectLevel(level) {
   nextQuestion();
 }
 
-// ド〜シボタン生成
+// ド〜シボタン
 function setupNoteButtons() {
   const div = document.getElementById("noteButtons");
   div.innerHTML = "";
@@ -156,7 +147,7 @@ function setupNoteButtons() {
   });
 }
 
-// 問題表示
+// 問題
 function nextQuestion() {
   if (currentIndex >= 10) {
     finishQuiz();
@@ -176,7 +167,7 @@ function nextQuestion() {
   drawStaffAndNote(noteName);
 }
 
-// 回答処理
+// 回答
 function answer(letter) {
   const correctNote = questions[currentIndex];
   const correctLetter = correctNote[0];
@@ -201,16 +192,16 @@ function finishQuiz() {
   document.getElementById("nextBtn").disabled = true;
 }
 
-// 五線譜＋音部記号＋音符描画
+// 五線＋音部記号＋音符
 function drawStaffAndNote(noteName) {
   const canvas = document.getElementById("staff");
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const top = 60;
   const spacing = 10;
+  const top = 60; // 上の線のY
 
-  // 五線描画（本物っぽく）
+  // 五線（下から第1〜5線）
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 1.5;
   for (let i = 0; i < 5; i++) {
@@ -222,87 +213,87 @@ function drawStaffAndNote(noteName) {
   }
 
   const midi = NOTES[noteName];
+  const clef = getClefForNote(noteName);
 
-  // 音部記号描画（ト音記号／へ音記号）
-  if (currentStep === 4 || (currentStep === 5 && isBass(noteName))) {
+  // 音部記号
+  if (clef === "bass") {
     const img = document.getElementById("bassClef");
-    ctx.drawImage(img, 40, top - 10, 60, 120);
+    ctx.drawImage(img, 40, top - 5, 60, 120);
   } else {
     const img = document.getElementById("trebleClef");
-    ctx.drawImage(img, 40, top - 35, 60, 140);
+    ctx.drawImage(img, 40, top - 40, 60, 140);
   }
 
-  // 音符位置計算
-  const y = getNoteY(midi, currentStep);
+  // 音符位置（楽譜規格準拠）
+  const y = getNoteY(midi, clef);
 
-  // 音符（丸譜）描画
+  // 丸譜
   const x = 220;
   ctx.fillStyle = "#000";
   ctx.beginPath();
   ctx.ellipse(x, y, 7, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 加線描画
-  drawLedgerLines(ctx, x, midi, currentStep, top, spacing);
+  // 加線
+  drawLedgerLines(ctx, x, midi, clef);
 }
 
-// 総合ステップでのへ音記号判定
-function isBass(noteName) {
+// 総合ステップでの音部記号判定
+function getClefForNote(noteName) {
+  if (currentStep === 4) return "bass";
+  if (currentStep === 1 || currentStep === 2 || currentStep === 3) return "treble";
+  // ステップ5：C4より下はへ音記号、それ以上はト音記号
   const midi = NOTES[noteName];
-  return midi <= NOTES["C4"];
+  return midi <= NOTES["C4"] ? "bass" : "treble";
 }
 
-// 音符のY座標計算（簡易だが楽譜っぽく）
-function getNoteY(midi, step) {
-  const top = 60;
+// 音符Y座標（本物規格）
+function getNoteY(midi, clef) {
   const spacing = 10;
+  const firstLineY = 60 + 4 * spacing; // 下の線（第1線）
 
-  let baseMidi, baseLineIndex;
-  if (step === 4 || (step === 5 && midi <= NOTES["C4"])) {
-    baseMidi = NOTES["D3"];   // へ音記号：D3を第3線
-    baseLineIndex = 2;
+  let baseMidi;
+  if (clef === "treble") {
+    // ト音記号：E4（第1線）
+    baseMidi = 64;
   } else {
-    baseMidi = NOTES["B4"];   // ト音記号：B4を第3線
-    baseLineIndex = 2;
+    // へ音記号：G2（第1線）
+    baseMidi = 43;
   }
 
-  const diff = midi - baseMidi;
-  const yBase = top + baseLineIndex * spacing;
-  const y = yBase - diff * 3;
+  const steps = (midi - baseMidi) / 2; // 1段=全音=2MIDI
+
+  const y = firstLineY - steps * (spacing / 2);
   return y;
 }
 
-// 加線描画
-function drawLedgerLines(ctx, x, midi, step, top, spacing) {
+// 加線（本物規格）
+function drawLedgerLines(ctx, x, midi, clef) {
+  const spacing = 10;
+  const topLineY = 60;              // 第5線（上）
+  const firstLineY = 60 + 4 * spacing; // 第1線（下）
+
+  let baseMidi = (clef === "treble") ? 64 : 43;
+  const steps = (midi - baseMidi) / 2;
+
+  const ledgerCount = Math.floor(Math.abs(steps) / 2);
+
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 1;
 
-  const yTopLine = top;
-  const yBottomLine = top + 4 * spacing;
-  const y = getNoteY(midi, step);
-
-  // 上側加線
-  if (y < yTopLine - spacing) {
-    let n = Math.round((yTopLine - y) / spacing);
-    for (let i = 1; i <= n; i++) {
-      const yy = yTopLine - i * spacing;
-      ctx.beginPath();
-      ctx.moveTo(x - 12, yy);
-      ctx.lineTo(x + 12, yy);
-      ctx.stroke();
+  for (let i = 1; i <= ledgerCount; i++) {
+    let y;
+    if (steps < 0) {
+      // 下側加線
+      y = firstLineY + i * spacing;
+    } else {
+      // 上側加線
+      y = topLineY - i * spacing;
     }
-  }
-
-  // 下側加線
-  if (y > yBottomLine + spacing) {
-    let n = Math.round((y - yBottomLine) / spacing);
-    for (let i = 1; i <= n; i++) {
-      const yy = yBottomLine + i * spacing;
-      ctx.beginPath();
-      ctx.moveTo(x - 12, yy);
-      ctx.lineTo(x + 12, yy);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y);
+    ctx.lineTo(x + 12, y);
+    ctx.stroke();
   }
 }
 </script>
