@@ -1,7 +1,17 @@
+<h2>ステップ2（ヴァイオリン）</h2>
+
+<p id="questionInfo"></p>
+<p id="status"></p>
+
+<button onclick="playQuestion()">▶ 音を聞く</button>
+<button onclick="checkAnswer('up')">↑ 高くなった</button>
+<button onclick="checkAnswer('down')">↓ 低くなった</button>
+
 <script>
+    // 10問分のランダム問題を生成
     const questions = [];
     for (let i = 0; i < 10; i++) {
-        const base = 660;
+        const base = 660; // ヴァイオリンの基準音（高め）
         const diff = (Math.random() > 0.5 ? 1 : -1) * (50 + Math.random() * 70);
         questions.push({ baseFreq: base, secondFreq: base + diff });
     }
@@ -9,7 +19,11 @@
     let currentIndex = 0;
     let correctAnswer = null;
     let answered = false;
+
+    // ★ 総得点
     let score = 0;
+
+    // ★ タイム計測
     let startTime = Date.now();
 
     function updateQuestionInfo() {
@@ -17,17 +31,18 @@
             "問題 " + (currentIndex + 1) + " / 10";
     }
 
+    // ★ ヴァイオリン音色（鋸波＋フィルター）
     function playViolin(freq) {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         const filter = ctx.createBiquadFilter();
 
-        osc.type = "sawtooth";
+        osc.type = "sawtooth"; // ヴァイオリンらしい鋸波
         osc.frequency.value = freq;
 
         filter.type = "lowpass";
-        filter.frequency.value = 2000;
+        filter.frequency.value = 2000; // 柔らかい音にする
 
         osc.connect(filter);
         filter.connect(gain);
