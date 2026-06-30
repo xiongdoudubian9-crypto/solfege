@@ -35,7 +35,7 @@
 </div>
 
 <script>
-/* 拍数定義 */
+/* 拍数定義（音符・休符の長さ） */
 const NOTE = {
   "whole": 4,
   "half": 2,
@@ -84,7 +84,7 @@ function mergeRests(rhythm) {
   return merged;
 }
 
-/* 4拍ちょうどになるようにリズム生成（音符は統合しない／休符は統合） */
+/* 合計が必ず4拍になるようにリズム生成（音符は統合しない／休符は統合） */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -99,7 +99,8 @@ function generateRhythm(level) {
     }
   }
 
-  rhythm = mergeRests(rhythm);
+  // ここでの rhythm は「実際に鳴らすリズム」＝合計4拍ちょうど
+  // 表示用に休符だけ統合する
   return rhythm;
 }
 
@@ -178,7 +179,7 @@ function normalize(rhythm) {
   return rhythm.map(n => NOTE[n]).sort((a,b)=>a-b);
 }
 function isSamePattern(a, b) {
-  return JSON.stringify(normalize(a)) === JSON.stringify(b);
+  return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
 }
 
 /* 選択肢生成（見た目が同じ譜例は除外） */
@@ -194,7 +195,7 @@ function generateChoices(correct, level) {
   return choices;
 }
 
-/* SVG譜例 */
+/* SVG譜例（表示用：休符だけ統合してから描画） */
 function drawNoteSVG(note) {
   switch(note) {
     case "quarter":
@@ -238,9 +239,10 @@ function displayChoices(choices, correct) {
   div.innerHTML = "";
   choices.forEach(choice => {
     const btn = document.createElement("button");
+    const displayRhythm = mergeRests(choice); // 表示用に休符だけ統合
     btn.innerHTML =
       `<span style="font-size:20px; font-weight:bold;">4/4</span> ` +
-      choice.map(n => drawNoteSVG(n)).join("");
+      displayRhythm.map(n => drawNoteSVG(n)).join("");
     btn.onclick = () => checkAnswer(choice, correct);
     div.appendChild(btn);
     div.appendChild(document.createElement("br"));
