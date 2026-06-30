@@ -102,13 +102,13 @@ function generateRhythm(level) {
   return mergeRests(rhythm);
 }
 
-/* モールス信号（拍の長さを維持） */
+/* 🎵 モールス信号（柔らかい時報のような音） */
 function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = "square";
-  osc.frequency.value = 900;
+  osc.type = "sine";        // ★柔らかい音
+  osc.frequency.value = 520; // ★時報のような優しい高さ
 
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -138,7 +138,7 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
-/* 🎯 リズム再生（打ち直し／伸ばし／休符無音／完全同期） */
+/* 🎯 リズム再生（音符は打ち直し／休符は無音／完全同期） */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
@@ -158,15 +158,15 @@ function playRhythm(rhythm, tempo) {
     playCastanet(start + i * beat, ctx);
   }
 
-  /* 本体（音符ごとに打ち直す／休符は無音） */
+  /* 本体（音符は打ち直し／休符は無音） */
   let cur = start;
   rhythm.forEach(note => {
     const dur = NOTE[note] * beat;
 
     if (note.includes("rest")) {
-      cur += dur;
+      cur += dur; // ★休符 → 絶対に鳴らさない
     } else {
-      playMorse(cur, dur, ctx);
+      playMorse(cur, dur, ctx); // ★音符 → 柔らかい音で鳴らす
       cur += dur;
     }
   });
