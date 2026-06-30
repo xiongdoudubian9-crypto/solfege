@@ -84,22 +84,28 @@ function mergeRests(rhythm) {
   return merged;
 }
 
-/* 🎯 拍子に応じて必ず拍数ぶんの音符 or 休符を並べる */
+/* 🎯 拍子に応じて必ず拍数ぶんの音符 or 休符を並べる（音符は複製しない） */
 function expandToBeats(rhythm) {
-  let expanded = [];
+  let beats = [];
+  let beatCount = 0;
+
   rhythm.forEach(note => {
-    const beats = NOTE[note];
-    for (let i = 0; i < beats; i++) {
-      expanded.push(note);
-    }
+    const length = NOTE[note];
+
+    // 音符は複製しない（打ち直しがあるため）
+    beats.push(note);
+
+    beatCount += length;
   });
 
-  /* 4拍に満たない場合は休符で補う */
-  while (expanded.length < 4) {
-    expanded.push("quarter_rest");
+  // 足りない拍は休符で埋める
+  while (beatCount < 4) {
+    beats.push("quarter_rest");
+    beatCount += 1;
   }
 
-  return expanded;
+  // 4拍を超えたら切り捨て（安全装置）
+  return beats.slice(0, 4);
 }
 
 /* 🎯 リズム生成（音符は統合しない／休符は統合／拍子に合わせて展開） */
