@@ -84,7 +84,25 @@ function mergeRests(rhythm) {
   return merged;
 }
 
-/* 🎯 リズム生成（音符は統合しない／休符は統合） */
+/* 🎯 拍子に応じて必ず拍数ぶんの音符 or 休符を並べる */
+function expandToBeats(rhythm) {
+  let expanded = [];
+  rhythm.forEach(note => {
+    const beats = NOTE[note];
+    for (let i = 0; i < beats; i++) {
+      expanded.push(note);
+    }
+  });
+
+  /* 4拍に満たない場合は休符で補う */
+  while (expanded.length < 4) {
+    expanded.push("quarter_rest");
+  }
+
+  return expanded;
+}
+
+/* 🎯 リズム生成（音符は統合しない／休符は統合／拍子に合わせて展開） */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -99,7 +117,10 @@ function generateRhythm(level) {
     }
   }
 
-  return mergeRests(rhythm);
+  rhythm = mergeRests(rhythm);
+  rhythm = expandToBeats(rhythm);
+
+  return rhythm;
 }
 
 /* 🎵 モールス信号（柔らかい時報のような音） */
@@ -107,8 +128,8 @@ function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = "sine";        // ★柔らかい音
-  osc.frequency.value = 520; // ★時報のような優しい高さ
+  osc.type = "sine";        // 柔らかい音
+  osc.frequency.value = 520; // 時報のような優しい高さ
 
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -121,7 +142,7 @@ function playMorse(time, duration, ctx) {
   osc.stop(time + duration);
 }
 
-/* カスタネット */
+/* カスタネット（拍位置） */
 function playCastanet(time, ctx) {
   const noise = ctx.createBufferSource();
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -138,13 +159,13 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
-/* 🎯 リズム再生（音符は打ち直し／休符は無音／完全同期） */
+/* 🎯 リズム再生（音符は打ち直し／休符は無音／拍位置は必ず鳴る） */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
   let t = ctx.currentTime;
 
-  /* 予備拍 */
+  /* 予備拍（4拍） */
   for (let i = 0; i < 4; i++) {
     playCastanet(t, ctx);
     t += beat;
@@ -152,21 +173,20 @@ function playRhythm(rhythm, tempo) {
 
   const start = t;
 
-  /* カスタネット（拍位置） */
-  const totalBeats = rhythm.reduce((sum, note) => sum + NOTE[note], 0);
-  for (let i = 0; i < totalBeats; i++) {
+  /* 拍位置のカスタネット（必ず鳴る） */
+  for (let i = 0; i < 4; i++) {
     playCastanet(start + i * beat, ctx);
   }
 
-  /* 本体（音符は打ち直し／休符は無音） */
+  /* 本体（音符は鳴らす／休符は無音） */
   let cur = start;
   rhythm.forEach(note => {
-    const dur = NOTE[note] * beat;
+    const dur = beat;
 
     if (note.includes("rest")) {
-      cur += dur; // ★休符 → 絶対に鳴らさない
+      cur += dur;
     } else {
-      playMorse(cur, dur, ctx); // ★音符 → 柔らかい音で鳴らす
+      playMorse(cur, dur, ctx);
       cur += dur;
     }
   });
