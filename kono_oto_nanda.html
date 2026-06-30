@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>この音なんだ？</title>
+<style>
+  body { font-family: sans-serif; }
+  #staff { border: 1px solid #ccc; margin: 10px 0; }
+  .note-btn {
+    margin: 4px;
+    padding: 8px 14px;
+    font-size: 18px;
+  }
+</style>
+</head>
+<body>
+
+<h2>この音なんだ？（単音読み取り）</h2>
+
+<div id="screen-step">
+  <p>ステップを選んでください。</p>
+  <button onclick="selectStep(1)">ステップ1（ト音記号 C4〜B4）</button><br>
+  <button onclick="selectStep(2)">ステップ2（ト音記号 C4〜G5）</button><br>
+  <button onclick="selectStep(3)">ステップ3（ト音記号 加線2本まで）</button><br>
+  <button onclick="selectStep(4)">ステップ4（へ音記号 C4〜C2）</button><br>
+  <button onclick="selectStep(5)">ステップ5（総合 C2〜C6）</button><br>
+</div>
+
+<div id="screen-level" style="display:none;">
+  <p>ステップ <span id="stepLabel"></span> が選ばれました。レベルを選んでください。</p>
+  <div id="levelButtons"></div>
+  <p><button onclick="backToStep()">← ステップ選択に戻る</button></p>
+</div>
+
+<div id="screen-quiz" style="display:none;">
+  <p id="quizInfo"></p>
+  <canvas id="staff" width="400" height="200"></canvas>
+  <p>この音はどれ？（ド〜シ）</p>
+  <div id="noteButtons"></div>
+  <p id="status"></p>
+  <button id="nextBtn" onclick="nextQuestion()" disabled>次の問題へ</button>
+</div>
+
+<script>
+// 音名とMIDI番号の対応（C4=60）
+const NOTES = {
+  "C2": 36, "D2": 38, "E2": 40, "F2": 41, "G2": 43, "A2": 45, "B2": 47,
+  "C3": 48, "D3": 50, "E3": 52, "F3": 53, "G3": 55, "A3": 57, "B3": 59,
+  "C4": 60, "D4": 62, "E4": 64, "F4": 65, "G4": 67, "A4": 69, "B4": 71,
+  "C5": 72, "D5": 74, "E5": 76, "F5": 77, "G5": 79, "A5": 81, "B5": 83,
+  "C6": 84
+};
+
+// ソルフェージ用の「ド〜シ」ラベル
+const SOLFEGE = {
+  "C": "ド",
+  "D": "レ",
+  "E": "ミ",
+  "F": "ファ",
+  "G": "ソ",
+  "A": "ラ",
+  "B": "シ"
+};
+
+// ステップごとの出題音セット
+const STEP_LEVELS = {
+  1: { // ト音記号 C4〜B4
+    1: ["C4","D4"],
+    2: ["C4","D4","E4"],
+    3: ["C4","D4","E4","F4"],
+    4: ["C4","D4","E4","F4","G4"],
+    5: ["C4","D4","E4","F4","G4","A4"],
+    6: ["C4","D4","E4","F4","G4","A4","B4"]
+  },
+  2: { // ト音記号 C4〜G5
+    1: ["C4","D4","E4","F4","G4","A4","B4","C5"],
+    2: ["C4","D4","E4","F4","G4","A4","B4","C5","D5"],
+    3: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5"],
+    4: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5"],
+    5: ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5"]
+  },
+  3: { // ト音記号 加線2本まで
+    1: ["A3","B3","C5","D5","E5","F5","G5"],
+    2: ["A3","B3","C5","D5","E5","F5","G5","A5","B5","C6"]
+  },
+  4: { // へ音記号 C4〜C2
+    1: ["C4","B4","A4","G4","F4","E4","D4","C3"],
+    2: ["C4","B4","A4","G4","F4","E4","D4","C3","B3","A3","G3","F3","E3","D3","C2"]
+  },
+  5: { // 総合 C2〜C6
+    1: ["C2","D2","E2","F2","G2","A2","B2",
+        "C3","D3","E3","F3","G3","A3","B3",
+        "C4","D4","E4","F4","G4","A4","B4",
+        "C5","D5","E5","F5","G5","A5","B5","C6"]
+  }
+};
+
+let currentStep = null;
+let currentLevel = null;
+let questions = [];
+let currentIndex = 0;
+let score = 0;
+
+// ステップ選択
+function selectStep(step) {
+  currentStep = step;
+  document.getElementById("stepLabel").innerText = step;
+  document.getElementById("screen-step").style.display = "none";
+  document.getElementById("screen-level").style.display = "block";
+
+  const levelDiv = document.getElementById("levelButtons");
+  levelDiv.innerHTML = "";
+  const levels = STEP_LEVELS[step];
+  Object.keys(levels).forEach(lv => {
+    const btn = document.createElement("button");
+    btn.textContent = "レベル " + lv;
+    btn.onclick = () => selectLevel(parseInt(lv));
+    levelDiv.appendChild(btn);
+    levelDiv.appendChild(document.createElement("br"));
+  });
+}
+
+function backToStep() {
+  document.getElementById("screen-level").style.display = "none";
+  document.getElementById("screen-step").style.display = "block";
+}
+
+// レベル選択
+function selectLevel(level) {
+  currentLevel = level;
+  questions = STEP_LEVELS[currentStep][currentLevel].slice(); // 出題音リスト
+  currentIndex = 0;
+  score = 0;
+
+  document.getElementById("screen-level").style.display = "none";
+  document.getElementById("screen-quiz").style.display = "block";
+
+  setupNoteButtons();
+  nextQuestion();
+}
+
+// ド〜シボタン生成
+function setupNoteButtons() {
+  const div = document.getElementById("noteButtons");
+  div.innerHTML = "";
+  ["C","D","E","F","G","A","B"].forEach(letter => {
+    const btn = document.createElement("button");
+    btn.className = "note-btn";
+    btn.textContent = SOLFEGE[letter];
+    btn.onclick = () => answer(letter);
+    div.appendChild(btn);
+  });
+}
+
+// 問題表示
+function nextQuestion() {
+  if (currentIndex >= 10) {
+    finishQuiz();
+    return;
+  }
+
+  document.getElementById("status").innerText = "";
+  document.getElementById("nextBtn").disabled = true;
+
+  // ランダムに1音選ぶ
+  const pool = STEP_LEVELS[currentStep][currentLevel];
+  const noteName = pool[Math.floor(Math.random() * pool.length)];
+  questions[currentIndex] = noteName;
+
+  document.getElementById("quizInfo").innerText =
+    "問題 " + (currentIndex + 1) + " / 10";
+
+  drawStaffAndNote(noteName);
+}
+
+// 回答処理
+function answer(letter) {
+  const correctNote = questions[currentIndex];
+  const correctLetter = correctNote[0]; // C4 → 'C'
+
+  if (letter === correctLetter) {
+    score++;
+    document.getElementById("status").innerText = "⭕ 正解！";
+  } else {
+    document.getElementById("status").innerText =
+      "❌ 不正解… 正解は「" + SOLFEGE[correctLetter] + "」";
+  }
+
+  currentIndex++;
+  document.getElementById("nextBtn").disabled = false;
+}
+
+// 終了
+function finishQuiz() {
+  document.getElementById("quizInfo").innerText = "終了（全10問）";
+  document.getElementById("status").innerText =
+    "総得点：" + score + "点";
+  document.getElementById("nextBtn").disabled = true;
+}
+
+// 五線譜＋音符描画
+function drawStaffAndNote(noteName) {
+  const canvas = document.getElementById("staff");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 五線描画（ト音記号・へ音記号共通で中央付近に）
+  const top = 60;
+  const spacing = 10;
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = top + i * spacing;
+    ctx.beginPath();
+    ctx.moveTo(40, y);
+    ctx.lineTo(360, y);
+    ctx.stroke();
+  }
+
+  // 記号（簡易：ト音記号／へ音記号の文字）
+  ctx.font = "24px serif";
+  ctx.fillStyle = "#000";
+  if (currentStep === 4 || (currentStep === 5 && isBass(noteName))) {
+    ctx.fillText("𝄢", 50, top + 3 * spacing); // へ音記号風
+  } else {
+    ctx.fillText("𝄞", 50, top + 2 * spacing); // ト音記号風
+  }
+
+  // 音符位置計算
+  const midi = NOTES[noteName];
+  const y = getNoteY(midi, currentStep);
+
+  // 音符描画
+  const x = 220;
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 加線（必要なら）
+  drawLedgerLines(ctx, x, midi, currentStep, top, spacing);
+}
+
+// ト音記号／へ音記号の判定（総合ステップ用）
+function isBass(noteName) {
+  const midi = NOTES[noteName];
+  return midi <= NOTES["C4"]; // C4以下はへ音記号側とみなす簡易ルール
+}
+
+// 音符のY座標計算（簡易版）
+function getNoteY(midi, step) {
+  // ト音記号の基準：B4を第3線（上から3本目）あたりに
+  // へ音記号の基準：D3を第3線あたりに
+  const top = 60;
+  const spacing = 10;
+
+  let baseMidi, baseLineIndex;
+  if (step === 4 || (step === 5 && midi <= NOTES["C4"])) {
+    // へ音記号側
+    baseMidi = NOTES["D3"];      // D3を第3線
+    baseLineIndex = 2;          // 0〜4のうち2番目
+  } else {
+    // ト音記号側
+    baseMidi = NOTES["B4"];      // B4を第3線
+    baseLineIndex = 2;
+  }
+
+  const diff = midi - baseMidi;
+  // 1音（半音）ごとに上下 3px くらい動かす簡易計算
+  const yBase = top + baseLineIndex * spacing;
+  const y = yBase - diff * 3;
+  return y;
+}
+
+// 加線描画（簡易）
+function drawLedgerLines(ctx, x, midi, step, top, spacing) {
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 1;
+
+  // ト音記号側の加線範囲（C5〜C6、A3〜B3など）
+  // へ音記号側の加線範囲（C2〜C3など）
+  // 簡易的に「五線の外に出たら適宜加線を描く」ルール
+
+  const yTopLine = top;
+  const yBottomLine = top + 4 * spacing;
+
+  const y = getNoteY(midi, step);
+
+  // 上側加線
+  if (y < yTopLine - spacing) {
+    // 何本必要かざっくり計算
+    let n = Math.round((yTopLine - y) / spacing);
+    for (let i = 1; i <= n; i++) {
+      const yy = yTopLine - i * spacing;
+      ctx.beginPath();
+      ctx.moveTo(x - 12, yy);
+      ctx.lineTo(x + 12, yy);
+      ctx.stroke();
+    }
+  }
+
+  // 下側加線
+  if (y > yBottomLine + spacing) {
+    let n = Math.round((y - yBottomLine) / spacing);
+    for (let i = 1; i <= n; i++) {
+      const yy = yBottomLine + i * spacing;
+      ctx.beginPath();
+      ctx.moveTo(x - 12, yy);
+      ctx.lineTo(x + 12, yy);
+      ctx.stroke();
+    }
+  }
+}
+</script>
+
+<p><a href="listen_read.html">← 読むメニューに戻る</a></p>
+
+</body>
+</html>
