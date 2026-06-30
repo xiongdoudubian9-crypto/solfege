@@ -1,7 +1,17 @@
+<h2>ステップ4（木管）</h2>
+
+<p id="questionInfo"></p>
+<p id="status"></p>
+
+<button onclick="playQuestion()">▶ 音を聞く</button>
+<button onclick="checkAnswer('up')">↑ 高くなった</button>
+<button onclick="checkAnswer('down')">↓ 低くなった</button>
+
 <script>
+    // 10問分のランダム問題を生成
     const questions = [];
     for (let i = 0; i < 10; i++) {
-        const base = 580;
+        const base = 580; // 木管の基準音（やや高め）
         const diff = (Math.random() > 0.5 ? 1 : -1) * (50 + Math.random() * 70);
         questions.push({ baseFreq: base, secondFreq: base + diff });
     }
@@ -9,7 +19,11 @@
     let currentIndex = 0;
     let correctAnswer = null;
     let answered = false;
+
+    // ★ 総得点
     let score = 0;
+
+    // ★ タイム計測
     let startTime = Date.now();
 
     function updateQuestionInfo() {
@@ -17,17 +31,18 @@
             "問題 " + (currentIndex + 1) + " / 10";
     }
 
+    // ★ 木管らしい音色（triangle波＋lowpassフィルター）
     function playWoodwind(freq) {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         const filter = ctx.createBiquadFilter();
 
-        osc.type = "triangle";
+        osc.type = "triangle"; // 木管らしい柔らかい音
         osc.frequency.value = freq;
 
         filter.type = "lowpass";
-        filter.frequency.value = 1500;
+        filter.frequency.value = 1500; // 木管の柔らかい帯域
 
         osc.connect(filter);
         filter.connect(gain);
