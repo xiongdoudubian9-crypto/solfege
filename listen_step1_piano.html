@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ステップ1 ピアノ - どっちが高い？（10問）</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 40px; }
+        button, .answer-button {
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        #playBtn { background: #2196F3; color: white; }
+        .answer-button { background: #4CAF50; color: white; }
+        .answer-button:hover { background: #43A047; }
+        #status { margin-top: 20px; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <h1>ステップ1 ピアノ - どっちが高い？</h1>
+    <p>ピアノの音を聴いて、2番目の音が「高い」か「低い」か答えてください。（全10問）</p>
+
+    <p id="questionInfo">問題 1 / 10</p>
+
+    <button id="playBtn" onclick="playQuestion()">▶ 音を再生</button>
+
+    <div>
+        <button class="answer-button" onclick="checkAnswer('up')">↑ 高くなった</button>
+        <button class="answer-button" onclick="checkAnswer('down')">↓ 低くなった</button>
+    </div>
+
+    <p id="status"></p>
+
+    <p><a href="listen_step1.html">← ステップ選択に戻る</a></p>
+
+    <script>
+        // 10問分の「基準音と差」をランダムに並べる
+        const questions = [];
+        for (let i = 0; i < 10; i++) {
+            const base = 261.63; // C4
+            const diff = (Math.random() > 0.5 ? 1 : -1) * (40 + Math.random() * 60); // 適当な差
+            questions.push({ baseFreq: base, secondFreq: base + diff });
+        }
+
+        let currentIndex = 0;
+        let correctAnswer = null;
+        let answered = false;
+
+        function updateQuestionInfo() {
+            document.getElementById("questionInfo").innerText =
+                "問題 " + (currentIndex + 1) + " / 10";
+        }
+
+        function playTone(freq) {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = "sine"; // ピアノ風の仮の音（後で差し替え可）
+            osc.frequency.value = freq;
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            gain.gain.setValueAtTime(0.8, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 1.0);
+        }
+
+        function playQuestion() {
+            if (currentIndex >= questions.length) return;
+
+            answered = false;
+            document.getElementById("status").innerText = "";
+
+            const q = questions[currentIndex];
+            correctAnswer = q.secondFreq > q.baseFreq ? "up" : "down";
+
+            playTone(q.baseFreq);
+            setTimeout(() => playTone(q.secondFreq), 800);
+        }
+
+        function checkAnswer(ans) {
+            if (currentIndex >= questions.length || answered) return;
+            answered = true;
+
+            if (ans === correctAnswer) {
+                document.getElementById("status").innerText = "⭕ 正解！";
+            } else {
+                document.getElementById("status").innerText = "❌ 不正解…";
+            }
+
+            currentIndex++;
+            if (currentIndex < questions.length) {
+                updateQuestionInfo();
+            } else {
+                document.getElementById("questionInfo").innerText = "終了（全10問）";
+                document.getElementById("status").innerText += "　おつかれさまでした！";
+            }
+        }
+
+        // ページを開いたときに問題番号だけセット
+        updateQuestionInfo();
+    </script>
+
+</body>
+</html>
