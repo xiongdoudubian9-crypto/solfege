@@ -35,6 +35,7 @@
 </div>
 
 <script>
+/* 拍数定義 */
 const NOTE = {
   "whole": 4,
   "half": 2,
@@ -44,6 +45,7 @@ const NOTE = {
   "dotted_half": 3
 };
 
+/* レベルごとの使用音符 */
 const LEVEL_NOTES = {
   1: ["quarter", "quarter_rest"],
   2: ["half", "quarter", "quarter_rest"],
@@ -53,6 +55,7 @@ const LEVEL_NOTES = {
   6: ["whole", "dotted_half", "half", "quarter", "quarter_rest", "half_rest"]
 };
 
+/* SVG譜例 */
 function drawNoteSVG(note) {
   switch(note) {
     case "quarter":
@@ -86,6 +89,7 @@ function drawNoteSVG(note) {
   }
 }
 
+/* カスタネット */
 function playCastanet(time, ctx) {
   const noise = ctx.createBufferSource();
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -102,6 +106,7 @@ function playCastanet(time, ctx) {
   noise.start(time);
 }
 
+/* モールス信号（拍の長さを維持） */
 function playMorse(time, duration, ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -120,6 +125,7 @@ function playMorse(time, duration, ctx) {
   osc.stop(time + duration);
 }
 
+/* リズム生成 */
 function generateRhythm(level) {
   const allowed = LEVEL_NOTES[level];
   let rhythm = [];
@@ -135,6 +141,7 @@ function generateRhythm(level) {
   return rhythm;
 }
 
+/* リズム再生（完全同期＋休符無音） */
 function playRhythm(rhythm, tempo) {
   const ctx = new AudioContext();
   const beat = 60 / tempo;
@@ -164,11 +171,20 @@ function playRhythm(rhythm, tempo) {
   });
 }
 
+/* 譜例の見た目で比較（正解判定のズレ防止） */
+function normalize(rhythm) {
+  return rhythm.map(n => NOTE[n]).sort((a,b)=>a-b);
+}
+function isSamePattern(a, b) {
+  return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+}
+
+/* 選択肢生成（見た目が同じ譜例は除外） */
 function generateChoices(correct, level) {
   let choices = [correct];
   while (choices.length < 4) {
     const wrong = generateRhythm(level);
-    if (JSON.stringify(wrong) !== JSON.stringify(correct)) {
+    if (!isSamePattern(wrong, correct)) {
       choices.push(wrong);
     }
   }
@@ -176,12 +192,15 @@ function generateChoices(correct, level) {
   return choices;
 }
 
+/* 譜例表示（4/4 拍子を追加） */
 function displayChoices(choices, correct) {
   const div = document.getElementById("choices");
   div.innerHTML = "";
   choices.forEach(choice => {
     const btn = document.createElement("button");
-    btn.innerHTML = choice.map(n => drawNoteSVG(n)).join("");
+    btn.innerHTML =
+      `<span style="font-size:20px; font-weight:bold;">4/4</span> ` +
+      choice.map(n => drawNoteSVG(n)).join("");
     btn.onclick = () => checkAnswer(choice, correct);
     div.appendChild(btn);
     div.appendChild(document.createElement("br"));
@@ -233,6 +252,7 @@ function nextQuestion() {
     finishQuiz();
     return;
   }
+
   document.getElementById("status").innerText = "";
   document.getElementById("nextBtn").disabled = true;
 
@@ -240,17 +260,21 @@ function nextQuestion() {
   document.getElementById("questionInfo").innerText =
     "問題 " + questionCount + " / 10";
 
-  const rhythm = generateRhythm(selectedLevel);
-  currentQuestion = rhythm;
+  /* ★ 正解のリズムを生成 */
+  currentQuestion = generateRhythm(selectedLevel);
 
-  playRhythm(rhythm, tempo);
+  /* ★ 正しいリズムを再生 */
+  playRhythm(currentQuestion, tempo);
 
-  const choices = generateChoices(rhythm, selectedLevel);
-  displayChoices(choices, rhythm);
+  /* ★ 正解は currentQuestion を使う */
+  const choices = generateChoices(currentQuestion, selectedLevel);
+
+  /* ★ 表示も currentQuestion を使う */
+  displayChoices(choices, currentQuestion);
 }
 
 function checkAnswer(selected, correct) {
-  if (JSON.stringify(selected) === JSON.stringify(correct)) {
+  if (isSamePattern(selected, correct)) {
     score++;
     document.getElementById("status").innerText = "⭕ 正解！";
   } else {
