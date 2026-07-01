@@ -17,9 +17,9 @@
 
 <h2>この音なんだ？（単音読み取り・楽譜規格準拠版）</h2>
 
-<!-- あなたが送ってくれた画像を読み込む -->
-<img id="trebleClef" src="treble.png" style="display:none;">
-<img id="bassClef" src="bass.png" style="display:none;">
+<!-- 本物仕様のト音記号・へ音記号SVG -->
+<img id="trebleClef" src="treble_clef.svg" style="display:none;">
+<img id="bassClef" src="bass_clef.svg" style="display:none;">
 
 <div id="screen-step">
   <p>ステップを選んでください。</p>
@@ -38,7 +38,7 @@
 
 <div id="screen-quiz" style="display:none;">
   <p id="quizInfo"></p>
-  <canvas id="staff" width="400" height="240"></canvas>
+  <canvas id="staff" width="400" height="220"></canvas>
   <p>この音はどれ？（ド〜シ）</p>
   <div id="noteButtons"></div>
   <p id="status"></p>
@@ -215,7 +215,7 @@ function drawStaffAndNote(noteName) {
   const midi = NOTES[noteName];
   const clef = getClefForNote(noteName);
 
-  // 音部記号（あなたの画像）
+  // 音部記号
   if (clef === "bass") {
     const img = document.getElementById("bassClef");
     ctx.drawImage(img, 40, top - 5, 60, 120);
@@ -242,6 +242,7 @@ function drawStaffAndNote(noteName) {
 function getClefForNote(noteName) {
   if (currentStep === 4) return "bass";
   if (currentStep === 1 || currentStep === 2 || currentStep === 3) return "treble";
+  // ステップ5：C4より下はへ音記号、それ以上はト音記号
   const midi = NOTES[noteName];
   return midi <= NOTES["C4"] ? "bass" : "treble";
 }
@@ -253,9 +254,11 @@ function getNoteY(midi, clef) {
 
   let baseMidi;
   if (clef === "treble") {
-    baseMidi = 64; // E4（第1線）
+    // ト音記号：E4（第1線）
+    baseMidi = 64;
   } else {
-    baseMidi = 43; // G2（第1線）
+    // へ音記号：G2（第1線）
+    baseMidi = 43;
   }
 
   const steps = (midi - baseMidi) / 2; // 1段=全音=2MIDI
@@ -281,8 +284,10 @@ function drawLedgerLines(ctx, x, midi, clef) {
   for (let i = 1; i <= ledgerCount; i++) {
     let y;
     if (steps < 0) {
+      // 下側加線
       y = firstLineY + i * spacing;
     } else {
+      // 上側加線
       y = topLineY - i * spacing;
     }
     ctx.beginPath();
